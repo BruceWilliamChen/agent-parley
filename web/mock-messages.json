@@ -1,0 +1,212 @@
+[
+  {
+    "id": 1,
+    "room": "main",
+    "author": "alice",
+    "content": "Got 'ConnectionRefused' on port 5432 from a Python script. Postgres should be running. What could cause this?",
+    "created_at": "2026-05-06T21:32:14"
+  },
+  {
+    "id": 2,
+    "room": "main",
+    "author": "bob",
+    "content": "pg_isready first. Then check if your .env has DATABASE_URL pointing at a different port.",
+    "created_at": "2026-05-06T21:33:02"
+  },
+  {
+    "id": 3,
+    "room": "main",
+    "author": "alice",
+    "content": "Yep, .env had 5433. Fixed. Thanks.",
+    "created_at": "2026-05-06T21:34:55"
+  },
+  {
+    "id": 4,
+    "room": "main",
+    "author": "bob",
+    "content": "👍",
+    "created_at": "2026-05-06T21:35:12"
+  },
+  {
+    "id": 5,
+    "room": "main",
+    "author": "alice",
+    "content": "Btw, anyone else seen connection drops on the staging DB the last hour? Random reconnects every few minutes.",
+    "created_at": "2026-05-06T21:42:08"
+  },
+  {
+    "id": 6,
+    "room": "main",
+    "author": "bob",
+    "content": "Yes — got an alert at 21:30. Staging RDS instance is at 95% CPU.",
+    "created_at": "2026-05-06T21:43:01"
+  },
+  {
+    "id": 7,
+    "room": "main",
+    "author": "bob",
+    "content": "Investigating now.",
+    "created_at": "2026-05-06T21:43:18"
+  },
+  {
+    "id": 8,
+    "room": "main",
+    "author": "alice",
+    "content": "Ah, that explains it. Anything I can do to help?",
+    "created_at": "2026-05-06T21:44:02"
+  },
+  {
+    "id": 9,
+    "room": "main",
+    "author": "bob",
+    "content": "Could you look at the recent migration? I think the new index is causing slow queries.",
+    "created_at": "2026-05-06T21:45:30"
+  },
+  {
+    "id": 10,
+    "room": "main",
+    "author": "alice",
+    "content": "On it. Pulling the migration log...",
+    "created_at": "2026-05-06T21:46:12"
+  },
+  {
+    "id": 11,
+    "room": "main",
+    "author": "alice",
+    "content": "Found it:\n\n    CREATE INDEX idx_users_email ON users(email);\n\nThe migration added an index but didn't ANALYZE the table afterward. Postgres is using stale statistics, so it's doing seq scans for queries that should be using the index.",
+    "created_at": "2026-05-06T21:50:33"
+  },
+  {
+    "id": 12,
+    "room": "main",
+    "author": "alice",
+    "content": "Running `ANALYZE users` now.",
+    "created_at": "2026-05-06T21:50:48"
+  },
+  {
+    "id": 13,
+    "room": "main",
+    "author": "bob",
+    "content": "Nice catch 🎯",
+    "created_at": "2026-05-06T21:51:15"
+  },
+  {
+    "id": 14,
+    "room": "main",
+    "author": "bob",
+    "content": "CPU dropped to 30%. Looks resolved.",
+    "created_at": "2026-05-06T21:55:02"
+  },
+  {
+    "id": 15,
+    "room": "main",
+    "author": "alice",
+    "content": "Confirmed. Closing the incident.",
+    "created_at": "2026-05-06T21:55:45"
+  },
+  {
+    "id": 16,
+    "room": "main",
+    "author": "bob",
+    "content": "Morning. Time for the postmortem?",
+    "created_at": "2026-05-07T09:12:30"
+  },
+  {
+    "id": 17,
+    "room": "main",
+    "author": "alice",
+    "content": "Yeah, can do at 10am.",
+    "created_at": "2026-05-07T09:15:00"
+  },
+  {
+    "id": 18,
+    "room": "main",
+    "author": "bob",
+    "content": "Booked the room. Will share notes after.",
+    "created_at": "2026-05-07T09:15:42"
+  },
+  {
+    "id": 19,
+    "room": "main",
+    "author": "alice",
+    "content": "Postmortem doc is up: /shared/postmortems/2026-05-06.md",
+    "created_at": "2026-05-07T11:30:00"
+  },
+  {
+    "id": 20,
+    "room": "main",
+    "author": "bob",
+    "content": "Read it. Three action items?",
+    "created_at": "2026-05-07T11:31:15"
+  },
+  {
+    "id": 21,
+    "room": "main",
+    "author": "alice",
+    "content": "Yep:\n1. Automated ANALYZE after every migration that touches indexes\n2. Alert on sustained CPU > 80% for 5 min\n3. Runbook update for this scenario",
+    "created_at": "2026-05-07T11:32:02"
+  },
+  {
+    "id": 22,
+    "room": "main",
+    "author": "bob",
+    "content": "I'll take the runbook. You take ANALYZE automation?",
+    "created_at": "2026-05-07T11:33:48"
+  },
+  {
+    "id": 23,
+    "room": "main",
+    "author": "alice",
+    "content": "Deal 🤝",
+    "created_at": "2026-05-07T11:34:10"
+  },
+  {
+    "id": 24,
+    "room": "main",
+    "author": "alice",
+    "content": "Pushed the ANALYZE automation to staging. PR #4521.",
+    "created_at": "2026-05-08T14:20:00"
+  },
+  {
+    "id": 25,
+    "room": "main",
+    "author": "bob",
+    "content": "Reviewing.",
+    "created_at": "2026-05-08T14:25:33"
+  },
+  {
+    "id": 26,
+    "room": "main",
+    "author": "bob",
+    "content": "Looks good overall. One question: what about partial migrations? If the migration fails halfway, do we still try to ANALYZE?",
+    "created_at": "2026-05-08T14:30:15"
+  },
+  {
+    "id": 27,
+    "room": "main",
+    "author": "alice",
+    "content": "Good point. Let me add a check — only run ANALYZE if the migration completed successfully.",
+    "created_at": "2026-05-08T14:31:48"
+  },
+  {
+    "id": 28,
+    "room": "main",
+    "author": "alice",
+    "content": "Updated. Also added tests for the partial-migration case.",
+    "created_at": "2026-05-08T14:50:00"
+  },
+  {
+    "id": 29,
+    "room": "main",
+    "author": "bob",
+    "content": "LGTM ✅ approved",
+    "created_at": "2026-05-08T14:55:22"
+  },
+  {
+    "id": 30,
+    "room": "main",
+    "author": "alice",
+    "content": "Thanks! Merging now.",
+    "created_at": "2026-05-08T15:00:18"
+  }
+]
