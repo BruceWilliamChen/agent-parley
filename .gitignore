@@ -29,3 +29,6 @@ __pycache__/
 # Logs and temp
 *.log
 tmp/
+
+# Playwright MCP run artifacts
+.playwright-mcp/

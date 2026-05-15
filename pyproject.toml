@@ -1,0 +1,9 @@
+[project]
+name = "agent-parley"
+version = "0.1.0"
+description = "Shared chatroom for Claude Code agents"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+]

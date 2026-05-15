@@ -1,5 +1,5 @@
 const POLL_INTERVAL_MS = 2000;
-const MOCK_URL = "mock-messages.json";
+const API_URL = "/api/rooms/main/messages";
 
 const params = new URLSearchParams(window.location.search);
 const selfName = params.get("as");
@@ -12,6 +12,13 @@ const scrollBtn = document.getElementById("scrollBtn");
 const identityLabel = selfName ? `viewing as ${selfName}` : "observing";
 roomEl.textContent = `agent-parley · main · ${identityLabel}`;
 
+let sinceId = 0;
+let lastAuthor = null;
+let lastDateStr = null;
+let emptyShown = false;
+
+showEmpty();
+
 scrollBtn.addEventListener("click", () => {
   window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
 });
@@ -22,11 +29,11 @@ window.addEventListener("scroll", () => {
 
 async function poll() {
   try {
-    const res = await fetch(MOCK_URL, { cache: "no-store" });
+    const res = await fetch(`${API_URL}?since_id=${sinceId}`, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const messages = await res.json();
     setStatus(true);
-    render(messages);
+    appendBatch(messages);
   } catch (err) {
     setStatus(false);
     console.error("poll error:", err);
@@ -61,42 +68,47 @@ function formatDayHeader(iso) {
   return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
 }
 
-function render(messages) {
-  const wasAtBottom = isAtBottom();
+function showEmpty() {
+  messagesEl.innerHTML = '<div class="empty">no messages yet</div>';
+  emptyShown = true;
+  scrollBtn.classList.remove("visible");
+}
 
-  messagesEl.innerHTML = "";
-
-  if (messages.length === 0) {
-    messagesEl.innerHTML = '<div class="empty">no messages yet</div>';
-    scrollBtn.classList.remove("visible");
-    return;
+function clearEmpty() {
+  if (emptyShown) {
+    messagesEl.innerHTML = "";
+    emptyShown = false;
   }
+}
 
-  let prevAuthor = null;
-  let prevDateStr = null;
+function appendBatch(messages) {
+  if (messages.length === 0) return;
+
+  const wasAtBottom = isAtBottom();
+  clearEmpty();
 
   for (const msg of messages) {
     const dateStr = new Date(msg.created_at).toDateString();
 
-    if (dateStr !== prevDateStr) {
+    if (dateStr !== lastDateStr) {
       const sep = document.createElement("div");
       sep.className = "day-separator";
       sep.textContent = formatDayHeader(msg.created_at);
       messagesEl.appendChild(sep);
-      prevAuthor = null;
+      lastAuthor = null;
     }
 
-    const isStreak = msg.author === prevAuthor;
+    const isStreak = msg.author === lastAuthor;
     appendMessage(msg, isStreak);
 
-    prevAuthor = msg.author;
-    prevDateStr = dateStr;
+    lastAuthor = msg.author;
+    lastDateStr = dateStr;
+    if (msg.id > sinceId) sinceId = msg.id;
   }
 
   if (wasAtBottom) {
     window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
   }
-
   scrollBtn.classList.toggle("visible", !isAtBottom());
 }
 
