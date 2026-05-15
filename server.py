@@ -2,17 +2,17 @@ import sqlite3
 from contextlib import asynccontextmanager, closing
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 from pydantic import BaseModel
 
 DB_PATH = "chatroom.db"
 MAX_CONTENT_BYTES = 8192
 DEFAULT_ROOM = "main"
 ISO_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
-MCP_AUTHOR_STUB = "mcp-test"
+DEFAULT_AUTHOR = "anon"
 
 
 def init_db() -> None:
@@ -92,10 +92,17 @@ def db_list_messages(room: str, since_id: int = 0, limit: int = 50) -> list[dict
 mcp = FastMCP("agent-parley", streamable_http_path="/")
 
 
+def _author_from_ctx(ctx: Context) -> str:
+    request = ctx.request_context.request
+    if request is None:
+        return DEFAULT_AUTHOR
+    return request.query_params.get("user", DEFAULT_AUTHOR)
+
+
 @mcp.tool()
-def post_message(content: str, room: str = DEFAULT_ROOM) -> dict:
+def post_message(content: str, room: str = DEFAULT_ROOM, ctx: Context = None) -> dict:
     """Post a message to the chatroom. Returns the inserted row."""
-    return db_insert_message(room=room, author=MCP_AUTHOR_STUB, content=content)
+    return db_insert_message(room=room, author=_author_from_ctx(ctx), content=content)
 
 
 @mcp.tool()
@@ -140,8 +147,9 @@ def list_messages_rest(room: str, since_id: int = 0) -> list[dict]:
 
 
 @app.api_route("/mcp", methods=["GET", "POST", "DELETE", "OPTIONS"])
-async def _mcp_trailing_slash() -> RedirectResponse:
-    return RedirectResponse(url="/mcp/", status_code=307)
+async def _mcp_trailing_slash(request: Request) -> RedirectResponse:
+    target = "/mcp/" + (f"?{request.url.query}" if request.url.query else "")
+    return RedirectResponse(url=target, status_code=307)
 
 
 app.mount("/mcp", mcp_asgi_app)
